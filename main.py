@@ -5,53 +5,55 @@ decomposition of the transition rate matrix (Mahalanobis distance
 in the space of eigenvectors of the symmetrized matrix K).
 
 METHOD:
-1. A transition rate matrix K is built between all structures
+1. A transition rate matrix K is constructed between all structures
    (N x N, where N ~ 2000) based on the Kramers formula.
 2. K is symmetrized taking detailed balance into account.
 3. The m smallest eigenvalues in magnitude and corresponding
    eigenvectors are computed (Lanczos method for sparse matrices).
-4. Automatic filtering of noise modes is performed by finding
-   a spectral gap: if the ratio |λ_k| / |λ_{k-1}| exceeds
-   a threshold (default 10^6), modes with indices < k are discarded
-   as numerical noise.
-5. Each attraction basin is represented by a characteristic
-   vector χ_A in the space of structures.
+4. Automatic filtering of noise modes is performed by searching for
+   a spectral gap: if the ratio |О»_k| / |О»_{k-1}| exceeds a threshold
+   (default 10^6), modes with indices < k are discarded as numerical noise.
+5. Each basin of attraction is represented by a characteristic
+   vector П‡_A in the space of structures.
 6. The distance between basins A and B is defined as the weighted
-   Euclidean distance between projections of χ_A and χ_B onto
+   Euclidean distance between projections of П‡_A and П‡_B onto the
    eigenvectors (Mahalanobis distance).
-7. The resulting distance matrix is a metric and is tested
-   for ultrametricity.
+7. The resulting distance matrix is a metric and is tested for
+   ultrametricity.
 
-HANDLING DISCONNECTED GRAPHS:
+HANDLING OF DISCONNECTED GRAPHS:
 Before constructing the K_sym matrix, the connectivity of the structure
 graph is checked. If the graph contains multiple connected components,
 each component is processed separately: its own K_sym matrix is built,
 spectral decomposition is performed, and ultrametricity is checked.
 Components with fewer than 3 basins are skipped.
+Components containing fewer than ALPHA_COMPONENT_THRESHOLD * N structures
+are classified as noise and excluded from the f_inter calculation and
+final spectral analysis.
 
 STATISTICAL MODE (NUM_STAT > 1):
 When NUM_STAT > 1, NUM_STAT independent runs are performed for each
 sequence with different random samples of structures (seed varies:
 RANDOM_SEED, RANDOM_SEED+1, ..., RANDOM_SEED+NUM_STAT-1).
 Results are averaged, and the final table shows mean values and
-standard deviations (mean ± std). Integer quantities (number of
+standard deviations (mean В± std). Integer quantities (number of
 structures, basins, connected components) are rounded to integers.
 
 OUTPUT MODES:
-VERBOSE = True  — full log (steps, components, spectral analysis).
-VERBOSE = False — brief log: sequence header and parameters are
-                  printed once, then only RUN/COMPLETED, followed
-                  by a statistics block.
+VERBOSE = True  вЂ” full log (steps, components, spectral analysis).
+VERBOSE = False вЂ” brief log: sequence header and parameters are printed
+                  once, then only RUN/COMPLETED markers, followed by
+                  the statistics block.
 
 ADVANTAGES:
-- Takes into account all possible transition paths (via spectral decomposition).
-- Context-independent (distance between A and B is determined only
-  by them, not by the presence of other basins).
+- Accounts for all possible transition paths (via spectral decomposition).
+- Context-independent (distance between A and B is determined only by
+  them, not by the presence of other basins).
 - Symmetric and guaranteed to be a metric.
-- Automatically filters out numerical noise via spectral gap detection.
+- Automatically filters numerical noise via spectral gap detection.
 - Correctly handles disconnected structure graphs.
-- Computational complexity O(m·N·E + K²·m), allowing processing
-  of N ~ 2000 structures and K ~ 100 basins in seconds.
+- Computational complexity O(mВ·NВ·E + KВІВ·m), allowing processing of
+  N ~ 2000 structures and K ~ 100 basins in seconds.
 
 STRUCTURE GENERATION MODE:
 Stochastic sampling (pbacktrack) from the Gibbs distribution.
@@ -100,17 +102,17 @@ _P = None
 FASTA_RNA = True
 """
 Mode for loading RNA sequences from FASTA files.
-  True  — scan current folder for *.fasta files,
-          load all sequences, sort by length.
-  False — use sequence from RNA_SEQUENCE.
+  True  вЂ” scan current directory for *.fasta files, load all sequences,
+          sort by length.
+  False вЂ” use sequence from RNA_SEQUENCE.
 Recommended value: True (for research work).
 """
 
 RNA_SEQUENCE = "ACATCAATCCACCACTCTTTCTCTTTAAAAAGAGTAGACCCAGGAACCGAAATTCTTTACCAAATTAAAAAA"
 """
 Primary RNA structure. Used only when FASTA_RNA = False.
-Allowed characters: A, U, G, C (uppercase, T is automatically replaced by U).
-Recommended length: 50–200 nucleotides.
+Allowed characters: A, U, G, C (uppercase; T is automatically replaced by U).
+Recommended length: 50вЂ“200 nucleotides.
 """
 
 # --- Temperature and energy parameters ---
@@ -119,19 +121,19 @@ TEMPERATURE_CELSIUS = 37.0
 """
 Temperature in degrees Celsius.
 Affects Boltzmann weights and transition probabilities.
-  Low (< 20°C): deep basins, rare transitions.
-  High (> 60°C): smoothed landscape, fast transitions.
+  Low (< 20В°C): deep basins, rare transitions.
+  High (> 60В°C): smoothed landscape, fast transitions.
 Recommended value: 37.0 (physiological temperature).
-Valid range: 0.0 – 100.0.
+Valid range: 0.0 вЂ“ 100.0.
 """
 
-ENERGY_WINDOW = 100.0
+ENERGY_WINDOW = 50.0
 """
 Energy window (kcal/mol) relative to minimum free energy (MFE).
 During stochastic sampling, structures with energy > MFE + ENERGY_WINDOW
-are discarded. If set to "inf", there is no window limit.
-  Small window (1–5 kcal/mol): only most stable structures,
-    may be insufficient for analysis.
+are discarded. If set to "inf", no window is applied.
+  Small window (1вЂ“5 kcal/mol): only most stable structures; may be
+    insufficient for analysis.
   Large window (> 15 kcal/mol): many structures, sparse graph,
     computation time increases.
 Recommended value: 10.0.
@@ -145,10 +147,10 @@ MAX_STRUCTURES = 100000
 Maximum number of generated secondary structures (microstates).
 Generation stops when the number of unique structures within the
 specified energy window reaches this value.
-  Few (100–500): fast but statistically poor analysis.
-  Many (> 10000): complete landscape picture, but slow.
-Recommended value: 2000–5000.
-Valid range: 100 – 20000.
+  Few (100вЂ“500): fast but statistically poor analysis.
+  Many (> 10000): complete landscape picture but slow.
+Recommended value: 2000вЂ“5000.
+Valid range: 100 вЂ“ 20000.
 """
 
 MIN_HAIRPIN_LEN = 3
@@ -158,7 +160,7 @@ Defines condition: j - i - 1 >= MIN_HAIRPIN_LEN.
   Standard value: 3 (steric constraint).
   Value 0 disables constraint (unphysical).
 Recommended value: 3.
-Valid range: 0 – 10.
+Valid range: 0 вЂ“ 10.
 """
 
 RANDOM_SEED = 43
@@ -170,110 +172,125 @@ Recommended value: 42 (or any integer).
 Valid range: any integer.
 """
 
-# --- Attraction basin parameters ---
+# --- Basin of attraction parameters ---
 
 MAX_MACROSTATES_ANALYSIS = 500
 """
-Maximum number of attraction basins included in final analysis.
-If more remain after filtering, basins with largest partition
-functions Z are kept.
-  Few (10–30): fast, but may lack triplet statistics.
-  Many (> 200): more triplets for analysis, but slower (K³ for spectrum).
+Maximum number of basins of attraction included in final analysis.
+If more remain after filtering, those with largest partition functions Z
+are retained.
+  Few (10вЂ“30): fast but may lack sufficient triplet statistics.
+  Many (> 200): more triplets for analysis but slower (KВі for spectrum).
 Recommended value: 100.
-Valid range: 3 – 500.
+Valid range: 3 вЂ“ 500.
 """
 
-MIN_MACROSTATE_SIZE = 50
+MIN_MACROSTATE_SIZE = 10
 """
-Minimum size of attraction basin (number of constituent structures).
+Minimum basin size (number of constituent structures).
 Smaller basins are considered statistically insignificant.
-  Value 1: includes all basins, including isolated structures.
-  Value 5–10: filters out small artifactual basins.
+  Value 1: include all basins, including isolated structures.
+  Value 5вЂ“10: filter out small artifactual basins.
 Recommended value: 5.
-Valid range: 1 – 100.
+Valid range: 1 вЂ“ 100.
+"""
+
+# --- Connected component filtering parameter ---
+
+ALPHA_COMPONENT_THRESHOLD = 0.01
+"""
+Relative threshold for classifying connected components of the structure
+graph as significant or noise. A component is significant if it contains
+at least max(3, ALPHA_COMPONENT_THRESHOLD * N) structures, where N is the
+total number of unique structures in the sample. Noise components are
+excluded from f_inter calculation and final spectral analysis.
+  Small value (0.001): conservative, artifactual components may remain.
+  Large value (0.05): aggressive, real small families may be lost.
+Recommended value: 0.01.
+Valid range: 0.001 вЂ“ 0.1.
 """
 
 # --- Spectral analysis parameters ---
 
 NUM_EIGENMODES = 50
 """
-Number of eigenmodes (eigenvalues and eigenvectors) requested
-for spectral decomposition. After automatic noise mode filtering,
-actual number of used modes may be smaller.
-  Few (5–10): fast, but loses fine landscape structure info.
-  Many (> 100): more accurate, but slower (scales linearly).
+Number of eigenmodes (eigenvalues and eigenvectors) requested for
+spectral decomposition. After automatic noise mode filtering, the actual
+number of modes used may be smaller.
+  Few (5вЂ“10): fast but loses information about fine landscape structure.
+  Many (> 100): more accurate but slower (grows linearly).
   Constraint: must be strictly less than number of structures.
 Recommended value: 50.
-Valid range: 5 – 200 (but no more than N-2, where N is number of structures).
+Valid range: 5 вЂ“ 200 (but no more than N-2, where N is number of structures).
 """
 
 SPECTRAL_GAP_THRESHOLD = 1e6
 """
 Threshold for detecting spectral gap between noise and physical modes.
-If ratio |λ_k| / |λ_{k-1}| > SPECTRAL_GAP_THRESHOLD, modes with indices
+If ratio |О»_k| / |О»_{k-1}| > SPECTRAL_GAP_THRESHOLD, modes with indices
 < k are considered numerical noise and discarded.
-  High threshold (10^8): conservative, may lose weak physical modes.
-  Low threshold (10^2): aggressive, may retain noise modes.
+  Large threshold (10^8): conservative, weak physical modes may be lost.
+  Small threshold (10^2): aggressive, noise modes may remain.
 Recommended value: 1e6.
-Valid range: 1e2 – 1e12.
+Valid range: 1e2 вЂ“ 1e12.
 """
 
 FREQUENCY_PREFACTOR = 1.0
 """
-Frequency prefactor ν₀ in Kramers formula (arbitrary units).
-Affects absolute scale of matrix K, but does not affect eigenvectors
-or relative distances between basins (changing ν₀ multiplies all λ_k
-by a constant, which cancels in Mahalanobis distance).
+Frequency prefactor ОЅв‚Ђ in Kramers formula (in arbitrary units).
+Affects absolute scale of matrix K but does not affect eigenvectors or
+relative distances between basins (changing ОЅв‚Ђ multiplies all О»_k by a
+constant, which cancels in Mahalanobis distance).
 Recommended value: 1.0 (leave unchanged).
 Valid range: any positive number.
 """
 
 EIGS_MAXITER = 50000
 """
-Maximum iterations for Lanczos algorithm (ARPACK) when computing
-eigenvalues of K_sym. Increasing this improves convergence for
-matrices with dense spectrum near zero, but increases runtime.
+Maximum number of iterations for Lanczos algorithm (ARPACK) when computing
+eigenvalues of K_sym. Increasing this parameter improves convergence for
+matrices with dense spectrum near zero but increases computation time.
 Recommended value: 50000.
-Valid range: 1000 – 200000.
+Valid range: 1000 вЂ“ 200000.
 """
 
 EIGS_SIGMA = 1e-10
 """
-Shift sigma for Lanczos algorithm when searching for eigenvalues
-near zero. Should be positive and small enough not to distort
-physical mode spectrum (which have |λ| >= 10^-4), but large
-enough to avoid numerical singularity when solving (K_sym - sigma*I)x = b.
+Shift sigma for Lanczos algorithm when searching for eigenvalues near zero.
+Value should be positive and small enough not to distort physical mode
+spectrum (which has |О»| >= 10^-4) but large enough to avoid numerical
+singularity when solving (K_sym - sigma*I)x = b.
   Too small (10^-15): risk of numerical singularity.
   Too large (10^-3): distorts spectrum.
 Recommended value: 1e-10.
-Valid range: 1e-12 – 1e-6.
+Valid range: 1e-12 вЂ“ 1e-6.
 """
 
 # --- Ultrametricity check parameters ---
 
 ULTRAMETRIC_EPSILON = 0.05
 """
-Relative tolerance ε for approximate ultrametricity check.
-Two largest triangle sides are considered equal if
-(d_max - d_mid) / d_mid <= ε.
+Relative tolerance Оµ for approximate ultrametricity check.
+Two largest sides of triangle are considered equal if
+(d_max - d_mid) / d_mid <= Оµ.
   Must be strictly less than ULTRAMETRIC_DELTA.
-  At ε = 0: exact equality required (almost unattainable).
-  At ε > 0.1: many false positive classifications.
+  At Оµ = 0: exact equality required (nearly unattainable).
+  At Оµ > 0.1: many false positive classifications.
 Recommended value: 0.05.
-Valid range: 0.0 – 0.20.
+Valid range: 0.0 вЂ“ 0.20.
 """
 
 ULTRAMETRIC_DELTA = 0.1
 """
-Minimum relative difference δ between smaller and middle triangle
-sides for classification as nontrivially ultrametric:
-(d_mid - d_min) / d_mid > δ.
+Minimum relative difference Оґ between smaller and middle sides of
+triangle for classification as nontrivially ultrametric:
+(d_mid - d_min) / d_mid > Оґ.
   Must be strictly greater than ULTRAMETRIC_EPSILON.
-  At small δ: equilateral triangles mistakenly classified
-    as nontrivially ultrametric.
-  At large δ: almost no nontrivially ultrametric triplets remain.
+  At small Оґ: equilateral triangles erroneously classified as
+    nontrivially ultrametric.
+  At large Оґ: almost no nontrivially ultrametric triplets remain.
 Recommended value: 0.1.
-Valid range: 0.01 – 0.50.
+Valid range: 0.01 вЂ“ 0.50.
 """
 
 # --- Computational resource parameters ---
@@ -285,14 +302,14 @@ Number of parallel processes for neighbor structure generation.
   1: single-threaded mode (for debugging).
   N: use exactly N processes.
 Recommended value: None.
-Valid range: 1 – cpu_count().
+Valid range: 1 вЂ“ cpu_count().
 """
 
 VERBOSE = False
 """
 Verbose output mode.
-  True: print all intermediate results (basin sizes,
-    transition stats, triangle distributions).
+  True: print all intermediate results (basin sizes, transition statistics,
+    triangle distributions).
   False: only final results (brief log).
 Recommended value: True (for research purposes).
 """
@@ -301,24 +318,38 @@ Recommended value: True (for research purposes).
 
 NUM_STAT = 5
 """
-Number of statistical trials (independent runs) for each
-RNA sequence.
+Number of statistical trials (independent runs) for each RNA sequence.
   NUM_STAT = 1: single run, result without deviation.
-  NUM_STAT > 1: performs NUM_STAT runs with different seeds
+  NUM_STAT > 1: NUM_STAT runs with different seeds
     (RANDOM_SEED, RANDOM_SEED+1, ..., RANDOM_SEED+NUM_STAT-1).
-    Results are averaged, output as mean ± SD.
+    Results are averaged, output as mean В± SD.
     Integer quantities (number of structures, basins, components)
     are rounded to integers.
 Recommended value: 1.
-Valid range: 1 – 100.
+Valid range: 1 вЂ“ 100.
+"""
+
+# --- Averaging over all RNAs parameter ---
+
+EXPECTATION_BY_RNA = False
+"""
+Mode for adding summary row with averaging over all processed RNAs.
+  False вЂ” program works as usual, only per-RNA table is printed.
+  True  вЂ” a row 'MEAN OVER ALL RNAs' is appended to the end of the
+          summary table, containing mean and SD across all sequences.
+          If NUM_STAT > 1, averaging and SD account for full variance:
+          both inter-molecular (between different RNAs) and intra-molecular
+          (between independent runs for same RNA).
+Recommended value: False (for detailed analysis), True (for summary estimate).
+Valid values: True, False.
 """
 
 # ============================================================================
 # PHYSICAL CONSTANTS
 # ============================================================================
 
-R_KCAL = 0.001987204259  # Gas constant in kcal/(mol·K) (R = N_A * k_B)
-EPS_COMPARISON = 1e-9  # For floating point comparison
+R_KCAL = 0.001987204259  # Gas constant in kcal/(molВ·K) (R = N_A * k_B)
+EPS_COMPARISON = 1e-9  # For floating-point comparisons
 
 
 # ============================================================================
@@ -438,7 +469,7 @@ def deduplicate_structures(structures, energies, verbose=True):
 def _pool_initializer_bitmask(index_map, conflict_masks, bit, P):
     """
     Initializer for Pool processes.
-    Sets module-level globals for O(1) access.
+    Sets module-level global variables for O(1) access.
     """
     global _INDEX_MAP, _CONFLICT_MASKS, _BIT, _P
     _INDEX_MAP = index_map
@@ -451,7 +482,7 @@ def _generate_neighbors_worker_bitmask(args):
     """
     Worker function for parallel neighbor generation.
     Accepts (idx, mask, set_bits), returns (idx, list_of_neighbor_indices).
-    This drastically reduces IPC overhead.
+    This dramatically reduces IPC overhead.
     """
     idx, mask, set_bits = args
     neighbors = []
@@ -490,7 +521,7 @@ def _generate_neighbors_worker_bitmask(args):
 
 
 # ============================================================================
-# GRAPH BUILDING AND ANALYSIS FUNCTIONS
+# GRAPH CONSTRUCTION AND ANALYSIS FUNCTIONS
 # ============================================================================
 
 def generate_structures_stochastic(seq, temp_celsius, max_structures, energy_window, verbose=True):
@@ -591,7 +622,7 @@ def build_neighbor_graph_bitmask(struct_masks, struct_set_bits, index_map, confl
 
 def find_connected_components(neighbors_list):
     """
-    Finds connected components of structure graph.
+    Finds connected components of the structure graph.
     """
     n = len(neighbors_list)
     visited = [False] * n
@@ -617,7 +648,7 @@ def find_connected_components(neighbors_list):
 
 def find_local_minima(energies, neighbors_list):
     """
-    Finds all local minima in neighbor graph.
+    Finds all local minima in the neighbor graph.
     """
     local_minima = []
     for idx in range(len(energies)):
@@ -633,7 +664,7 @@ def find_local_minima(energies, neighbors_list):
 
 def compute_gradient_basins(energies, neighbors_list, verbose=True):
     """
-    Determines attraction basins (gradient basins)
+    Determines basins of attraction (gradient basins)
     with correct plateau handling.
     """
     n = len(energies)
@@ -811,11 +842,11 @@ def filter_macrostates_spectral(basins, Z, min_size, max_macrostates, verbose=Tr
         valid.sort(key=lambda i: Z[i], reverse=True)
         valid = valid[:max_macrostates]
         if verbose:
-            print(f"  Macrostates kept with largest Z: {len(valid)} (out of {len(basins)})")
+            print(f"  Macrostates retained with largest Z: {len(valid)} (out of {len(basins)})")
     else:
         valid.sort(key=lambda i: Z[i], reverse=True)
         if verbose:
-            print(f"  Macrostates kept: {len(valid)}")
+            print(f"  Macrostates retained: {len(valid)}")
     
     filtered_basins = [basins[i] for i in valid]
     old_to_new = {old: new for new, old in enumerate(valid)}
@@ -909,9 +940,9 @@ def compute_spectral_distance(
         
         if num_noise > 1:
             abs_all = np.abs(np.sort(np.abs(eigenvalues)))
-            print(f"    Noise modes (|λ|): {abs_all[:min(num_noise, 10)]}")
+            print(f"    Noise modes (|О»|): {abs_all[:min(num_noise, 10)]}")
             if num_phys > 0:
-                print(f"    First physical modes (|λ|): {np.abs(eigenvalues_filtered[:min(5, num_phys)])}")
+                print(f"    First physical modes (|О»|): {np.abs(eigenvalues_filtered[:min(5, num_phys)])}")
                 if num_noise > 0 and num_phys > 0:
                     gap_ratio = np.abs(eigenvalues_filtered[0]) / (abs_all[num_noise-1] + 1e-300)
                     print(f"    Gap ratio: {gap_ratio:.2e}")
@@ -999,7 +1030,7 @@ def classify_triangle(d1, d2, d3, eps, delta):
 
 
 def compute_ultrametricity_score(dist_matrix, eps, delta):
-    """Computes ultrametricity scores."""
+    """Computes degrees of ultrametricity."""
     n = dist_matrix.shape[0]
     if n < 3:
         return 0.0, 0.0, 0.0, defaultdict(int)
@@ -1033,7 +1064,7 @@ def compute_ultrametricity_score(dist_matrix, eps, delta):
 
 def load_fasta_sequences():
     """
-    Scans current folder for .fasta files.
+    Scans current directory for .fasta files.
     """
     try:
         from Bio import SeqIO
@@ -1045,7 +1076,7 @@ def load_fasta_sequences():
     fasta_files = glob.glob("*.fasta")
     
     if not fasta_files:
-        print("Error: no .fasta files found in current folder")
+        print("Error: no .fasta files found in current directory")
         return []
     
     print(f"FASTA files found: {len(fasta_files)}")
@@ -1071,13 +1102,13 @@ def load_fasta_sequences():
             print(f"  Error reading file {fasta_file}: {e}")
     
     if not all_sequences:
-        print("Error: failed to load any sequences from FASTA files")
+        print("Error: no sequences loaded from FASTA files")
         return []
     
     all_sequences.sort(key=lambda x: x[2])
     
     print(f"\nSequences loaded: {len(all_sequences)}")
-    print("Sequences (sorted by ascending length):")
+    print("Sequences (sorted by increasing length):")
     for i, (seq, desc, length) in enumerate(all_sequences):
         print(f"  {i+1}. {desc}: length {length} nt")
     
@@ -1091,7 +1122,7 @@ def load_fasta_sequences():
 def process_sequence_single(seq, seq_description, seq_index, total_sequences, 
                             stat_iter, num_stat, current_seed, show_details=True):
     """
-    Performs full ultrametricity analysis for one RNA sequence.
+    Performs complete ultrametricity analysis for one RNA sequence.
     """
     start_time = time.time()
     step_timings = {}
@@ -1180,7 +1211,7 @@ def process_sequence_single(seq, seq_description, seq_index, total_sequences,
         print("\n" + "-" * 50)
         print("STEP 5: BUILD NEIGHBOR GRAPH (Optimized IPC and Bitmask)")
         print("-" * 50)
-        print("  Parallel generation with global variables and streaming")
+        print("  Parallel generation with global variables and streaming processing")
     
     neighbors = build_neighbor_graph_bitmask(
         struct_masks, struct_set_bits, index_map, conflict_masks, bit, P, n_workers, verbose=show_details
@@ -1193,7 +1224,7 @@ def process_sequence_single(seq, seq_description, seq_index, total_sequences,
     del struct_masks, struct_set_bits, index_map
     gc.collect()
     
-    # ===== STEP 6: CHECK GRAPH CONNECTIVITY =====
+    # ===== STEP 6: CHECK GRAPH CONNECTIVITY AND CLASSIFY COMPONENTS =====
     step_start = time.time()
     if show_details:
         print("\n" + "-" * 50)
@@ -1201,11 +1232,37 @@ def process_sequence_single(seq, seq_description, seq_index, total_sequences,
         print("-" * 50)
     
     graph_components = find_connected_components(neighbors)
-    num_components = len(graph_components)
+    num_components_total = len(graph_components)
     component_sizes = [len(comp) for comp in graph_components]
+    
+    # Classify components as significant or noise by relative threshold
+    N_structures = len(energies)
+    min_component_size = max(3, int(ALPHA_COMPONENT_THRESHOLD * N_structures))
+    
+    significant_component_indices = []
+    noise_component_indices = []
+    for comp_idx, comp in enumerate(graph_components):
+        if len(comp) >= min_component_size:
+            significant_component_indices.append(comp_idx)
+        else:
+            noise_component_indices.append(comp_idx)
+    
     if show_details:
-        print(f"  Connected components found: {num_components}")
-        print(f"  Component sizes (first 15): {component_sizes[:15]}")
+        print(f"  Connected components found: {num_components_total}")
+        print(f"  Significance threshold: {min_component_size} structures "
+              f"(alpha={ALPHA_COMPONENT_THRESHOLD}, N={N_structures})")
+        print(f"  Significant components: {len(significant_component_indices)}")
+        print(f"  Noise components: {len(noise_component_indices)}")
+        if significant_component_indices:
+            sig_sizes = [len(graph_components[i]) for i in significant_component_indices]
+            print(f"  Significant component sizes (first 15): {sig_sizes[:15]}")
+        if noise_component_indices and len(noise_component_indices) <= 20:
+            noise_sizes = [len(graph_components[i]) for i in noise_component_indices]
+            print(f"  Noise component sizes: {noise_sizes}")
+        elif noise_component_indices:
+            noise_sizes = [len(graph_components[i]) for i in noise_component_indices]
+            print(f"  Noise component sizes (first 15): {noise_sizes[:15]} ... "
+                  f"(total {len(noise_component_indices)})")
     step_timings['Step 6: Check graph connectivity'] = time.time() - step_start
     
     # ===== STEP 7: FIND LOCAL MINIMA (FOR ENTIRE GRAPH) =====
@@ -1248,7 +1305,7 @@ def process_sequence_single(seq, seq_description, seq_index, total_sequences,
         print(f"  Partition functions computed for {total_basins} basins")
     step_timings['Step 9: Compute partition functions'] = time.time() - step_start
     
-    # ===== STEP 10: FILTER MACROSTATES (GLOBAL) =====
+    # ===== STEP 10: FILTER MACROSTATES =====
     step_start = time.time()
     if show_details:
         print("\n" + "-" * 50)
@@ -1268,45 +1325,83 @@ def process_sequence_single(seq, seq_description, seq_index, total_sequences,
         gc.collect()
         return None
     
-    # ===== STEP 11: PROCESS BY CONNECTED COMPONENTS =====
+    # ===== STEP 11: PROCESS BY SIGNIFICANT CONNECTED COMPONENTS =====
     step_start = time.time()
     if show_details:
         print("\n" + "-" * 50)
         print("STEP 11: PROCESS BY CONNECTED COMPONENTS")
         print("-" * 50)
     
-    if num_components == 1:
-        if show_details:
-            print(f"  Graph is connected. Processing as single component.")
-        components_to_process = [(0, list(range(len(energies))))]
+    # Map each filtered basin to its connected component
+    # Create mapping: structure index -> component index
+    struct_to_component = {}
+    for comp_idx, comp in enumerate(graph_components):
+        for struct_idx in comp:
+            struct_to_component[struct_idx] = comp_idx
+    
+    # Count basins in each significant component after filtering
+    basins_per_significant_comp = defaultdict(int)
+    basin_to_comp_map = {}  # basin_idx -> comp_idx (significant only)
+    for basin_idx, (_, basin_structs) in enumerate(filtered_basins):
+        # Basin belongs to component containing majority of its structures
+        comp_counts = defaultdict(int)
+        for s in basin_structs:
+            if s in struct_to_component:
+                comp_counts[struct_to_component[s]] += 1
+        if comp_counts:
+            dominant_comp = max(comp_counts, key=comp_counts.get)
+            basin_to_comp_map[basin_idx] = dominant_comp
+            if dominant_comp in significant_component_indices:
+                basins_per_significant_comp[dominant_comp] += 1
+    
+    # Compute f_inter using only significant components
+    K_sig = sum(basins_per_significant_comp.values())
+    if K_sig >= 3:
+        intra_triplets_sig = sum(
+            bc * (bc - 1) * (bc - 2) // 6
+            for bc in basins_per_significant_comp.values()
+            if bc >= 3
+        )
+        total_triplets_sig = K_sig * (K_sig - 1) * (K_sig - 2) // 6
+        f_inter = 1.0 - (intra_triplets_sig / total_triplets_sig) if total_triplets_sig > 0 else 0.0
     else:
-        if show_details:
-            print(f"  Graph is disconnected ({num_components} components). Processing each separately.")
-        components_to_process = []
-        skipped_by_size = defaultdict(int)
-        
-        for comp_idx, comp_indices in enumerate(graph_components):
-            comp_set = set(comp_indices)
-            basins_in_comp = 0
-            for basin_idx, (_, basin_structs) in enumerate(filtered_basins):
-                if any(s in comp_set for s in basin_structs):
-                    basins_in_comp += 1
-            if basins_in_comp >= 3:
-                components_to_process.append((comp_idx, comp_indices))
-                if show_details:
-                    print(f"    Component {comp_idx}: size {len(comp_indices)}, basins ~ {basins_in_comp}")
-            else:
-                skipped_by_size[len(comp_indices)] += 1
-        
-        if show_details and skipped_by_size:
-            print(f"    Components skipped (basins < 3):")
-            for size in sorted(skipped_by_size.keys(), reverse=True):
-                count = skipped_by_size[size]
-                suffix = "" if count == 1 else "s"
-                print(f"      size {size}: {count} component{suffix}")
+        f_inter = 0.0
+    
+    if show_details:
+        print(f"  Significant components with >= 3 basins: "
+              f"{sum(1 for bc in basins_per_significant_comp.values() if bc >= 3)}")
+        print(f"  Basins in significant components (K_sig): {K_sig}")
+        print(f"  Fraction of inter-component triplets (f_inter, significant only): {f_inter:.4f}")
+    
+    # Form list of significant components for processing
+    if len(significant_component_indices) == 0:
+        print("  Error: no significant connected components")
+        gc.collect()
+        return None
+    
+    components_to_process = []
+    skipped_by_size = defaultdict(int)
+    
+    for comp_idx in significant_component_indices:
+        comp_indices = graph_components[comp_idx]
+        basins_in_comp = basins_per_significant_comp.get(comp_idx, 0)
+        if basins_in_comp >= 3:
+            components_to_process.append((comp_idx, comp_indices))
+            if show_details:
+                print(f"    Component {comp_idx}: size {len(comp_indices)}, "
+                      f"basins {basins_in_comp}")
+        else:
+            skipped_by_size[len(comp_indices)] += 1
+    
+    if show_details and skipped_by_size:
+        print(f"    Significant components skipped (basins < 3):")
+        for size in sorted(skipped_by_size.keys(), reverse=True):
+            count = skipped_by_size[size]
+            suffix = '' if count == 1 else 's'
+            print(f"      size {size}: {count} component{suffix}")
     
     if not components_to_process:
-        print("  Error: no connected component contains >= 3 basins")
+        print("  Error: no significant component contains >= 3 basins")
         gc.collect()
         return None
     
@@ -1379,7 +1474,7 @@ def process_sequence_single(seq, seq_description, seq_index, total_sequences,
         )
         
         if show_details:
-            print(f"    Nontrivial ultrametricity degree: {u_nt_comp:.2f}%")
+            print(f"    Degree of nontrivial ultrametricity: {u_nt_comp:.2f}%")
             if counts_comp:
                 total_triplets = sum(counts_comp.values())
                 for cls, cnt in sorted(counts_comp.items()):
@@ -1410,10 +1505,10 @@ def process_sequence_single(seq, seq_description, seq_index, total_sequences,
             'num_triplets': sum(counts_comp.values())
         })
     
-    step_timings['Steps 11-12: Component processing and spectral analysis'] = time.time() - step_start
+    step_timings['Steps 11-12: Process components and spectral analysis'] = time.time() - step_start
     
     if not all_component_results:
-        print("\n  Error: failed to process any connected component")
+        print("\n  Error: failed to process any significant connected component")
         gc.collect()
         return None
     
@@ -1427,16 +1522,6 @@ def process_sequence_single(seq, seq_description, seq_index, total_sequences,
         weighted_u_tr = 0.0
         weighted_u_non = 0.0
     
-    # ===== COMPUTE INTER-COMPONENT TRIPLET FRACTION f_inter =====
-    # f_inter = 1 - (sum of intra-family triplets) / (all basin triplets)
-    K_total = num_filtered_basins
-    if K_total >= 3:
-        total_all_triplets = K_total * (K_total - 1) * (K_total - 2) // 6
-        intra_triplets = total_triplets_all  # sum of C(K_c, 3) over processed components
-        f_inter = 1.0 - (intra_triplets / total_all_triplets) if total_all_triplets > 0 else 0.0
-    else:
-        f_inter = 0.0
-    
     if show_details:
         print("\n" + "-" * 50)
         print("FINAL RESULTS")
@@ -1445,16 +1530,17 @@ def process_sequence_single(seq, seq_description, seq_index, total_sequences,
         print(f"  Length: {seq_len} nucleotides")
         print(f"  Method: spectral Mahalanobis distance")
         print(f"  Number of structures: {len(energies)}")
-        print(f"  Number of connected components: {num_components}")
-        print(f"  Number of processed components: {len(all_component_results)}")
-        print(f"  Number of basins (total after filtering): {num_filtered_basins}")
+        print(f"  Connected components (total): {num_components_total}")
+        print(f"  Significant components: {len(significant_component_indices)}")
+        print(f"  Processed components: {len(all_component_results)}")
+        print(f"  Basins (total after filtering): {num_filtered_basins}")
         print(f"  Inter-component triplet fraction (f_inter): {f_inter:.4f}")
-        print(f"  Weighted nontrivial ultrametricity degree: {weighted_u_nt:.2f}%")
-        print(f"  Weighted trivial ultrametricity degree: {weighted_u_tr:.2f}%")
-        print(f"  Weighted non-ultrametricity degree: {weighted_u_non:.2f}%")
+        print(f"  Weighted degree of nontrivial ultrametricity: {weighted_u_nt:.2f}%")
+        print(f"  Weighted degree of trivial ultrametricity: {weighted_u_tr:.2f}%")
+        print(f"  Weighted degree of non-ultrametricity: {weighted_u_non:.2f}%")
         
         if len(all_component_results) > 1:
-            print(f"\n  Results by component:")
+            print(f"\n  Per-component results:")
             for res in all_component_results:
                 print(f"    Component {res['comp_idx']}: size {res['comp_size']}, "
                       f"basins {res['num_basins']}, "
@@ -1475,7 +1561,7 @@ def process_sequence_single(seq, seq_description, seq_index, total_sequences,
     
     elapsed = time.time() - start_time
     if show_details:
-        print(f"  {'—' * 40}")
+        print(f"  {'вЂ”' * 40}")
         if elapsed < 60:
             print(f"  TOTAL TIME: {elapsed:.1f} sec")
         else:
@@ -1494,8 +1580,9 @@ def process_sequence_single(seq, seq_description, seq_index, total_sequences,
         'weighted_u_nt': weighted_u_nt,
         'weighted_u_tr': weighted_u_tr,
         'weighted_u_non': weighted_u_non,
-        'f_inter': f_inter,  # inter-component triplet fraction
-        'n_components': num_components,
+        'f_inter': f_inter,  # inter-component triplet fraction (significant only)
+        'n_components': num_components_total,
+        'n_significant_components': len(significant_component_indices),
         'n_processed_components': len(all_component_results),
         'n_structures': len(energies),
         'n_basins': num_filtered_basins,
@@ -1508,12 +1595,12 @@ def process_sequence_single(seq, seq_description, seq_index, total_sequences,
 
 
 # ============================================================================
-# SEQUENCE PROCESSING FUNCTION (WITH NUM_STAT SUPPORT)
+# SINGLE SEQUENCE PROCESSING FUNCTION (WITH NUM_STAT SUPPORT)
 # ============================================================================
 
 def process_sequence(seq, seq_description, seq_index, total_sequences):
     """
-    Performs full ultrametricity analysis for one RNA sequence.
+    Performs complete ultrametricity analysis for one RNA sequence.
     """
     all_runs = []
     seq_len = len(seq)
@@ -1543,7 +1630,7 @@ def process_sequence(seq, seq_description, seq_index, total_sequences):
     print("\n" + "-" * 50)
     print("SIMULATION PARAMETERS")
     print("-" * 50)
-    print(f"Temperature: {TEMPERATURE_CELSIUS:.2f}°C ({TEMPERATURE_CELSIUS + 273.15:.2f} K)")
+    print(f"Temperature: {TEMPERATURE_CELSIUS:.2f}В°C ({TEMPERATURE_CELSIUS + 273.15:.2f} K)")
     if isinstance(ENERGY_WINDOW, str) and ENERGY_WINDOW.lower() == "inf":
         print(f"Energy window: none (inf)")
     else:
@@ -1551,17 +1638,18 @@ def process_sequence(seq, seq_description, seq_index, total_sequences):
     print(f"Max structures: {MAX_STRUCTURES}")
     print(f"Min macrostate size: {MIN_MACROSTATE_SIZE}")
     print(f"Max macrostates: {MAX_MACROSTATES_ANALYSIS}")
+    print(f"Component significance threshold: alpha={ALPHA_COMPONENT_THRESHOLD}")
     print(f"Requested eigenmodes: {NUM_EIGENMODES}")
     print(f"Spectral gap threshold: {SPECTRAL_GAP_THRESHOLD:.1e}")
-    print(f"Frequency prefactor nu0: {FREQUENCY_PREFACTOR}")
-    print(f"ARPACK max iterations: {EIGS_MAXITER}")
-    print(f"ARPACK shift sigma: {EIGS_SIGMA}")
+    print(f"Frequency prefactor nu_0: {FREQUENCY_PREFACTOR}")
+    print(f"Max ARPACK iterations: {EIGS_MAXITER}")
+    print(f"ARPACK sigma shift: {EIGS_SIGMA}")
     print(f"Min hairpin length: {MIN_HAIRPIN_LEN} (j - i >= {MIN_HAIRPIN_LEN + 1})")
     print(f"Tolerance epsilon: {ULTRAMETRIC_EPSILON}, delta: {ULTRAMETRIC_DELTA}")
     print(f"Seed: {RANDOM_SEED} (base)")
     if NUM_STAT > 1:
         print(f"NUM_STAT: {NUM_STAT} (statistical trials)")
-    print(f"Number of processes (CPU): {n_workers}")
+    print(f"Worker processes (CPU): {n_workers}")
     print(f"Method: spectral Mahalanobis distance with auto noise filtering")
     print(f"\nR*T = {RT:.6f} kcal/mol")
     
@@ -1595,14 +1683,15 @@ def process_sequence(seq, seq_description, seq_index, total_sequences):
         print("\n" + "=" * 70)
         print(f"RESULT FOR SEQUENCE {seq_index}")
         print("=" * 70)
-        print(f"  Weighted u_nt:              {res['weighted_u_nt']:.2f} %")
-        print(f"  Weighted u_tr:              {res['weighted_u_tr']:.2f} %")
-        print(f"  Weighted u_non:             {res['weighted_u_non']:.2f} %")
-        print(f"  Inter-component fraction:   {res['f_inter']:.4f}")
-        print(f"  Number of structures:       {res['n_structures']}")
-        print(f"  Number of basins:           {res['n_basins']}")
-        print(f"  Connected components:       {res['n_components']}")
-        print(f"  Elapsed time:               {res['elapsed']:.1f} sec")
+        print(f"  Weighted u_nt:                {res['weighted_u_nt']:.2f} %")
+        print(f"  Weighted u_tr:                {res['weighted_u_tr']:.2f} %")
+        print(f"  Weighted u_non:               {res['weighted_u_non']:.2f} %")
+        print(f"  Inter-component triplet frac: {res['f_inter']:.4f}")
+        print(f"  Number of structures:         {res['n_structures']}")
+        print(f"  Number of basins:             {res['n_basins']}")
+        print(f"  Components (total):           {res['n_components']}")
+        print(f"  Significant components:       {res['n_significant_components']}")
+        print(f"  Elapsed time:                 {res['elapsed']:.1f} sec")
         return res
     
     print("\n" + "=" * 70)
@@ -1616,6 +1705,7 @@ def process_sequence(seq, seq_description, seq_index, total_sequences):
     n_structures_vals = np.array([r['n_structures'] for r in all_runs], dtype=np.float64)
     n_basins_vals = np.array([r['n_basins'] for r in all_runs], dtype=np.float64)
     n_components_vals = np.array([r['n_components'] for r in all_runs], dtype=np.float64)
+    n_sig_components_vals = np.array([r['n_significant_components'] for r in all_runs], dtype=np.float64)
     elapsed_vals = np.array([r['elapsed'] for r in all_runs])
     
     mean_u_nt = np.mean(weighted_u_nt_vals)
@@ -1639,6 +1729,9 @@ def process_sequence(seq, seq_description, seq_index, total_sequences):
     mean_comp = np.mean(n_components_vals)
     std_comp = np.std(n_components_vals, ddof=1) if len(all_runs) > 1 else 0.0
     
+    mean_sig_comp = np.mean(n_sig_components_vals)
+    std_sig_comp = np.std(n_sig_components_vals, ddof=1) if len(all_runs) > 1 else 0.0
+    
     mean_elapsed = np.mean(elapsed_vals)
     std_elapsed = np.std(elapsed_vals, ddof=1) if len(all_runs) > 1 else 0.0
     
@@ -1648,15 +1741,18 @@ def process_sequence(seq, seq_description, seq_index, total_sequences):
     std_basins_rounded = int(round(std_basins))
     mean_comp_rounded = int(round(mean_comp))
     std_comp_rounded = int(round(std_comp))
+    mean_sig_comp_rounded = int(round(mean_sig_comp))
+    std_sig_comp_rounded = int(round(std_sig_comp))
     
-    print(f"  Weighted u_nt:              {mean_u_nt:.2f} +/- {std_u_nt:.2f} %")
-    print(f"  Weighted u_tr:              {mean_u_tr:.2f} +/- {std_u_tr:.2f} %")
-    print(f"  Weighted u_non:             {mean_u_non:.2f} +/- {std_u_non:.2f} %")
-    print(f"  Inter-component fraction:   {mean_f_inter:.4f} +/- {std_f_inter:.4f}")
-    print(f"  Number of structures:       {mean_struct_rounded} +/- {std_struct_rounded}")
-    print(f"  Number of basins:           {mean_basins_rounded} +/- {std_basins_rounded}")
-    print(f"  Connected components:       {mean_comp_rounded} +/- {std_comp_rounded}")
-    print(f"  Elapsed time:               {mean_elapsed:.1f} +/- {std_elapsed:.1f} sec")
+    print(f"  Weighted u_nt:                {mean_u_nt:.2f} +/- {std_u_nt:.2f} %")
+    print(f"  Weighted u_tr:                {mean_u_tr:.2f} +/- {std_u_tr:.2f} %")
+    print(f"  Weighted u_non:               {mean_u_non:.2f} +/- {std_u_non:.2f} %")
+    print(f"  Inter-component triplet frac: {mean_f_inter:.4f} +/- {std_f_inter:.4f}")
+    print(f"  Number of structures:         {mean_struct_rounded} +/- {std_struct_rounded}")
+    print(f"  Number of basins:             {mean_basins_rounded} +/- {std_basins_rounded}")
+    print(f"  Components (total):           {mean_comp_rounded} +/- {std_comp_rounded}")
+    print(f"  Significant components:       {mean_sig_comp_rounded} +/- {std_sig_comp_rounded}")
+    print(f"  Elapsed time:                 {mean_elapsed:.1f} +/- {std_elapsed:.1f} sec")
     
     first_res = all_runs[0]
     return {
@@ -1677,6 +1773,8 @@ def process_sequence(seq, seq_description, seq_index, total_sequences):
         'n_basins_std': std_basins_rounded,
         'n_components': mean_comp_rounded,
         'n_components_std': std_comp_rounded,
+        'n_significant_components': mean_sig_comp_rounded,
+        'n_significant_components_std': std_sig_comp_rounded,
         'n_processed_components': first_res['n_processed_components'],
         'component_results': first_res['component_results'],
         'counts': first_res['counts'],
@@ -1696,13 +1794,15 @@ def main():
     total_start_time = time.time()
     
     print("=" * 70)
-    print("NONTRIVIAL ULTRAMETRICITY DEGREE CALCULATION")
+    print("CALCULATION OF NONTRIVIAL ULTRAMETRICITY DEGREE")
     print("FOR RNA SECONDARY STRUCTURE MACROSTATES")
     print("METHOD: spectral Mahalanobis distance")
     print("(physically rigorous approach via transition rate matrix)")
     print("STRUCTURE GENERATION: stochastic sampling (pbacktrack)")
     if NUM_STAT > 1:
         print(f"STATISTICAL MODE: {NUM_STAT} runs per sequence")
+    if EXPECTATION_BY_RNA:
+        print("AVERAGING OVER ALL RNAs MODE: enabled (summary row added)")
     print("=" * 70)
     
     if FASTA_RNA:
@@ -1763,6 +1863,101 @@ def main():
                       f"{res['n_components']:<6} {res['n_basins']:<12} "
                       f"{f_inter_str:<10} "
                       f"{u_nt_str:<12} {u_tr_str:<12} {u_non_str:<12} {res['elapsed']:<10.1f}")
+        
+        # Add summary row averaged over all RNAs if EXPECTATION_BY_RNA is enabled
+        if EXPECTATION_BY_RNA and len(all_seq_results) > 1:
+            print("-" * len(header))
+            
+            # Collect all individual measurements for full averaging
+            # If NUM_STAT > 1, collect values from each individual run of each RNA
+            # If NUM_STAT == 1, collect single values from each RNA
+            all_u_nt = []
+            all_u_tr = []
+            all_u_non = []
+            all_f_inter = []
+            all_n_struct = []
+            all_n_basins = []
+            all_n_comp = []
+            all_elapsed = []
+            
+            for res in all_seq_results:
+                if NUM_STAT > 1 and 'all_runs' in res:
+                    for run in res['all_runs']:
+                        all_u_nt.append(run['weighted_u_nt'])
+                        all_u_tr.append(run['weighted_u_tr'])
+                        all_u_non.append(run['weighted_u_non'])
+                        all_f_inter.append(run['f_inter'])
+                        all_n_struct.append(run['n_structures'])
+                        all_n_basins.append(run['n_basins'])
+                        all_n_comp.append(run['n_components'])
+                        all_elapsed.append(run['elapsed'])
+                else:
+                    all_u_nt.append(res['weighted_u_nt'])
+                    all_u_tr.append(res['weighted_u_tr'])
+                    all_u_non.append(res['weighted_u_non'])
+                    all_f_inter.append(res['f_inter'])
+                    all_n_struct.append(res['n_structures'])
+                    all_n_basins.append(res['n_basins'])
+                    all_n_comp.append(res['n_components'])
+                    all_elapsed.append(res['elapsed'])
+            
+            arr_u_nt = np.array(all_u_nt)
+            arr_u_tr = np.array(all_u_tr)
+            arr_u_non = np.array(all_u_non)
+            arr_f_inter = np.array(all_f_inter)
+            arr_n_struct = np.array(all_n_struct, dtype=np.float64)
+            arr_n_basins = np.array(all_n_basins, dtype=np.float64)
+            arr_n_comp = np.array(all_n_comp, dtype=np.float64)
+            arr_elapsed = np.array(all_elapsed)
+            
+            mean_u_nt_all = np.mean(arr_u_nt)
+            std_u_nt_all = np.std(arr_u_nt, ddof=1) if len(arr_u_nt) > 1 else 0.0
+            
+            mean_u_tr_all = np.mean(arr_u_tr)
+            std_u_tr_all = np.std(arr_u_tr, ddof=1) if len(arr_u_tr) > 1 else 0.0
+            
+            mean_u_non_all = np.mean(arr_u_non)
+            std_u_non_all = np.std(arr_u_non, ddof=1) if len(arr_u_non) > 1 else 0.0
+            
+            mean_f_inter_all = np.mean(arr_f_inter)
+            std_f_inter_all = np.std(arr_f_inter, ddof=1) if len(arr_f_inter) > 1 else 0.0
+            
+            mean_struct_all = np.mean(arr_n_struct)
+            std_struct_all = np.std(arr_n_struct, ddof=1) if len(arr_n_struct) > 1 else 0.0
+            
+            mean_basins_all = np.mean(arr_n_basins)
+            std_basins_all = np.std(arr_n_basins, ddof=1) if len(arr_n_basins) > 1 else 0.0
+            
+            mean_comp_all = np.mean(arr_n_comp)
+            std_comp_all = np.std(arr_n_comp, ddof=1) if len(arr_n_comp) > 1 else 0.0
+            
+            mean_elapsed_all = np.mean(arr_elapsed)
+            std_elapsed_all = np.std(arr_elapsed, ddof=1) if len(arr_elapsed) > 1 else 0.0
+            
+            label = "MEAN OVER ALL RNAs"
+            
+            if NUM_STAT > 1:
+                struct_str = f"{int(round(mean_struct_all))}+/-{int(round(std_struct_all))}"
+                comp_str = f"{int(round(mean_comp_all))}+/-{int(round(std_comp_all))}"
+                basins_str = f"{int(round(mean_basins_all))}+/-{int(round(std_basins_all))}"
+                f_inter_str = f"{mean_f_inter_all:.4f}+/-{std_f_inter_all:.4f}"
+                u_nt_str = f"{mean_u_nt_all:.2f}+/-{std_u_nt_all:.2f}"
+                u_tr_str = f"{mean_u_tr_all:.2f}+/-{std_u_tr_all:.2f}"
+                u_non_str = f"{mean_u_non_all:.2f}+/-{std_u_non_all:.2f}"
+                time_str = f"{mean_elapsed_all:.1f}+/-{std_elapsed_all:.1f}"
+                print(f"{'':<4} {label:<30} {'':<8} "
+                      f"{struct_str:<16} {comp_str:<14} {basins_str:<16} "
+                      f"{f_inter_str:<14} "
+                      f"{u_nt_str:<18} {u_tr_str:<18} {u_non_str:<18} {time_str:<16}")
+            else:
+                u_nt_str = f"{mean_u_nt_all:.2f}"
+                u_tr_str = f"{mean_u_tr_all:.2f}"
+                u_non_str = f"{mean_u_non_all:.2f}"
+                f_inter_str = f"{mean_f_inter_all:.4f}"
+                print(f"{'':<4} {label:<35} {'':<8} {int(round(mean_struct_all)):<10} "
+                      f"{int(round(mean_comp_all)):<6} {int(round(mean_basins_all)):<12} "
+                      f"{f_inter_str:<10} "
+                      f"{u_nt_str:<12} {u_tr_str:<12} {u_non_str:<12} {mean_elapsed_all:<10.1f}")
     
     total_elapsed = time.time() - total_start_time
     print(f"\nTotal execution time: {total_elapsed:.1f} seconds")
