@@ -4,7 +4,7 @@ INSTRUCTIONS FOR USING THE RNA ENERGY LANDSCAPE ULTRAMETRICITY ANALYSIS SOFTWARE
 
 This software implements a method for calculating the degree of nontrivial ultrametricity of the energy landscape of RNA secondary structures. The method is based on the spectral decomposition of the symmetrized Kramers transition rate matrix and the Mahalanobis distance. Unlike single-linkage distance methods, which produce an ultrametric by construction, this metric does not automatically satisfy the ultrametric inequality, making the verification of hierarchical landscape organization a substantive mathematical problem rather than an algorithmic artifact.
 
-The software implements a complete computational pipeline, including automatic filtering of spurious spectral modes, processing of disconnected structure graphs arising from stochastic sampling, and a hierarchy of null models for statistical significance testing.
+The software implements a complete computational pipeline, including automatic filtering of spurious spectral modes, processing of disconnected structure graphs arising from stochastic sampling, and a hierarchy of null models for statistical significance testing. Statistical significance is assessed using a two-sided p-value, as biological function may require either pronounced hierarchy (high ultrametricity) or its absence/specific frustration (low ultrametricity).
 
 2. REQUIREMENTS AND INSTALLATION
 
@@ -42,16 +42,19 @@ NUM_STAT (integer)
 Number of independent runs for reproducibility assessment. Runs are executed in parallel. Default value: 1. A value of 3-5 is recommended for estimating standard deviation.
 
 NULL_MODEL_TYPE (string)
-Type of null model for statistical testing. Possible values:
+Type of null model for statistical testing. All models use a two-sided p-value. Possible values:
 - none: no null hypothesis testing
-- energy_shuffle: shuffling energies while preserving graph topology
-- topo_shuffle: configuration model (edge rewiring + energy shuffling)
-- nt_shuffle: complete nucleotide shuffling with ensemble regeneration
-- full_analysis: automatic execution of both energy_shuffle and topo_shuffle
-- random_basins: geometric control (random basins of the same sizes)
+- full_analysis: (RECOMMENDED) Full mechanism analysis. Automatically executes both energy_shuffle and topo_shuffle tests. Outputs two separate summary tables.
+- energy_shuffle: Shuffles energies while preserving graph topology. Assesses the contribution of pure graph topology to ultrametricity.
+- topo_shuffle: Configuration model. Edge rewiring (double_edge_swap preserving vertex degrees) combined with energy shuffling. Destroys topological correlations while preserving mobility distribution. Represents maximum chaos at fixed degree sequence.
+- nt_shuffle: Complete nucleotide shuffling with full ensemble regeneration. The most stringent biological control. Tests whether ultrametricity is determined by specific nucleotide order. Requires significant computation time.
+- random_basins: Geometric control. Preserves real spectrum but randomly partitions structures into basins of identical sizes. Checks for artifacts of high-dimensional eigenvector space geometry.
 
 NUM_NULL_SAMPLES (integer)
-Number of null model realizations. For nt_shuffle, 5-10 is recommended; for other models, 20-30.
+Number of null model realizations. For nt_shuffle, 5-10 is recommended; for other models, 20-30. In full_analysis mode, this number applies to both tests.
+
+NUM_EDGE_SWAPS_MULTIPLIER (integer)
+Multiplier for edge swaps in topo_shuffle and full_analysis modes. Number of swaps = NUM_EDGE_SWAPS_MULTIPLIER * |E|. Default value: 10. Range: 1-100.
 
 NUM_WORKERS (integer or None)
 Number of parallel processes. None enables automatic detection based on available CPU cores.
@@ -81,26 +84,28 @@ f_inter — fraction of inter-component triplets. An indicator of graph fragment
 
 5.2. Null Model Tables
 
-When tests are enabled, additional tables with p-values and test execution times are displayed.
+When tests are enabled, additional tables with two-sided p-values and test execution times are displayed.
 
-Interpretation of p-value:
-- p < 0.05: the observed ultrametricity significantly exceeds the random level. The hierarchy is due to specific landscape organization.
-- p >= 0.05: ultrametricity does not differ from the random model.
+Interpretation of two-sided p-value:
+- p < 0.05: the observed ultrametricity significantly deviates from the random level (in either direction). The hierarchy (or its absence) is a statistically significant property of the given sequence.
+- p >= 0.05: ultrametricity does not significantly differ from the random model.
 
 Model comparison:
-- If real > nt_shuffle but real is approximately equal to energy_shuffle: hierarchy is determined by the topology of the conformational space.
+- If real > nt_shuffle but real ≈ energy_shuffle: hierarchy is determined primarily by the topology of the conformational space.
 - If real > energy_shuffle: hierarchy is determined by the specific distribution of free energies (thermodynamic funnels).
+- If real < energy_shuffle: physical organization frustrates the topologically inherent hierarchy.
+- If real significantly differs from nt_shuffle but not from energy_shuffle: ultrametricity is a topological property, not a consequence of specific nucleotide order.
 
 6. COMPUTATIONAL PERFORMANCE
 
 The most resource-intensive stages are neighbor graph construction and spectral decomposition. The software is optimized using bit masks and parallel computing.
 
-Approximate timing for an RNA of 70 nucleotides with a sample of 5000 structures: one main stage run takes 20-30 seconds on a modern multi-core processor. The nt_shuffle test requires complete recalculation and takes proportionally longer.
+Approximate timing for an RNA of 70 nucleotides with a sample of 5000 structures: one main stage run takes 20-30 seconds on a modern multi-core processor. The nt_shuffle test requires complete recalculation and takes proportionally longer. The topo_shuffle test involves edge rewiring and is moderately more expensive than energy_shuffle.
 
 7. CITATION
 
 If you use this software in your research, please cite:
-Zubarev, A. P. (2026). Degree of nontrivial ultrametricity for RNA macrostates. Zenodo. https://doi.org/10.5281/zenodo.20611640
+Zubarev, A. P. (2026). Degree of nontrivial ultrametricity for RNA macrostates. Zenodo. https://doi.org/10.5281/zenodo.20558257
 
 8. CONTACTS
 
