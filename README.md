@@ -59,6 +59,9 @@ Multiplier for edge swaps in topo_shuffle and full_analysis modes. Number of swa
 NUM_WORKERS (integer or None)
 Number of parallel processes. None enables automatic detection based on available CPU cores.
 
+EXPECTATION_BY_RNA (True/False)
+Ensemble averaging mode. When True, a summary row "СРЕДНЕЕ ПО ВСЕМ РНК" (MEAN OVER ALL RNAs) containing mean values and standard deviations of all corresponding metrics is appended to the END OF EACH output table (main results table and all null model tables). This allows assessment of typical values and spread across the ensemble for both real data and each null model. Default value: False.
+
 4. RUNNING THE SOFTWARE
 
 Execute from the command line:
@@ -96,6 +99,16 @@ Model comparison:
 - If real < energy_shuffle: physical organization frustrates the topologically inherent hierarchy.
 - If real significantly differs from nt_shuffle but not from energy_shuffle: ultrametricity is a topological property, not a consequence of specific nucleotide order.
 
+5.3. Ensemble Averaging (EXPECTATION_BY_RNA)
+
+When EXPECTATION_BY_RNA = True, an additional summary row labeled "СРЕДНЕЕ ПО ВСЕМ РНК" is appended to every output table:
+- Main Results Table: mean and std of u_nt, u_tr, u_non, f_inter, number of structures, basins, components, and execution time across all RNA sequences.
+- Energy Shuffle Table: mean and std of Energy u_nt, Energy u_tr, Energy u_non across all sequences.
+- Topo Shuffle Table: mean and std of Topo u_nt, Topo u_tr, Topo u_non across all sequences.
+- NT Shuffle Table: mean and std of NT u_nt, NT u_tr, NT u_non across all sequences.
+
+This row provides a quick overview of the typical ultrametricity level and its variability across the studied ensemble, both for real landscapes and under each null hypothesis. It is particularly useful for identifying whether observed patterns are consistent across the dataset or dominated by individual outliers.
+
 6. COMPUTATIONAL PERFORMANCE
 
 The most resource-intensive stages are neighbor graph construction and spectral decomposition. The software is optimized using bit masks and parallel computing.
@@ -105,7 +118,7 @@ Approximate timing for an RNA of 70 nucleotides with a sample of 5000 structures
 7. CITATION
 
 If you use this software in your research, please cite:
-Zubarev, A. P. (2026). Degree of nontrivial ultrametricity for RNA macrostates. Zenodo. https://doi.org/10.5281/zenodo.20494227
+Zubarev, A. P. (2026). Degree of nontrivial ultrametricity for RNA macrostates. Zenodo. https://doi.org/10.5281/zenodo.20558257
 
 8. CONTACTS
 
