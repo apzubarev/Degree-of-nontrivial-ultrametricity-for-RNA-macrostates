@@ -215,7 +215,7 @@ Approximate timing for an RNA of 70 nucleotides with a sample of ~22,000 structu
 7. CITATION
 
 If you use this software in your research, please cite:
-Zubarev, A. P. (2026). Degree of nontrivial ultrametricity for RNA macrostates. Zenodo. https://doi.org/10.5281/zenodo.20558257
+Zubarev, A. P. (2026). Degree of nontrivial ultrametricity for RNA macrostates. Zenodo. https://doi.org/10.5281/zenodo.20818030
 
 8. CONTACTS
 
