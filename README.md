@@ -1,223 +1,151 @@
-INSTRUCTIONS FOR USING THE RNA ENERGY LANDSCAPE ULTRAMETRICITY ANALYSIS SOFTWARE
+RNA KINETIC METRIC AND ULTRAMETRICITY ANALYSIS
 
-1. GENERAL INFORMATION
+1. OVERVIEW
 
-This software implements a method for calculating the degree of nontrivial ultrametricity of the energy landscape of RNA secondary structures. The method is based on the spectral decomposition of the symmetrized Kramers transition rate matrix and the Mahalanobis distance. Unlike single-linkage distance methods, which produce an ultrametric by construction, this metric does not automatically satisfy the ultrametric inequality, making the verification of hierarchical landscape organization a substantive mathematical problem rather than an algorithmic artifact.
+This repository provides a comprehensive Python implementation for calculating the degree of nontrivial ultrametricity of RNA secondary structure energy landscapes. The method is based on a physically rigorous kinetic metric constructed via the spectral decomposition of the symmetrized Kramers transition rate matrix and the Mahalanobis distance between attraction basins. 
 
-The software implements a complete computational pipeline, including:
-- Stochastic sampling of secondary structures from the Boltzmann ensemble.
-- Construction of the adjacency graph via elementary operations.
-- Automatic filtering of spurious spectral modes using a spectral gap search.
-- Processing of disconnected structure graphs arising from stochastic sampling.
-- A hierarchy of null models for statistical significance testing (energy shuffle, configuration model, nucleotide shuffle).
-- Statistical significance assessment via a two-sided p-value, as biological function may require either pronounced hierarchy (high ultrametricity) or its absence/specific frustration (low ultrametricity).
-- Parallel execution of the main stage, statistical runs (NUM_STAT), and null hypothesis tests.
+The software accompanies the scientific paper "Kinetic metric for attraction basins of RNA secondary structures and analysis of the energy landscape ultrametricity" by A. P. Zubarev. It is designed to process ensembles of RNA secondary structures, build transition graphs, identify gradient basins, compute spectral distances, and rigorously test the statistical significance of the observed hierarchical organization against multiple null models.
 
-2. REQUIREMENTS AND INSTALLATION
 
-Python version 3.8 or higher is required.
+2. THEORETICAL BACKGROUND
 
-Required libraries:
-- ViennaRNA (Python bindings)
-- numpy
-- scipy
-- biopython
-- threadpoolctl (optional, for explicit thread control on Windows)
+Hierarchical organization of complex systems is naturally described by ultrametric spaces, where the strong triangle inequality holds. For RNA molecules, the energy landscape of secondary structures may exhibit partial ultrametricity, reflecting the presence of thermodynamic funnels and hierarchical folding pathways.
 
-Install dependencies via pip:
+Previous methods, such as the single-linkage distance, artificially enforce ultrametricity by construction, making it impossible to distinguish between real physical hierarchy and methodological artifacts. 
+
+Our method constructs a kinetic metric that is NOT an ultrametric by construction. It models the folding dynamics as a continuous-time Markov process. The transition rates between neighboring structures are calculated using the Kramers formula. The asymmetric transition rate matrix is symmetrized using the detailed balance condition. The distance between macroscopic attraction basins is then defined as the Mahalanobis distance in the subspace spanned by the slowest relaxation modes (eigenvectors corresponding to the smallest non-zero eigenvalues). This approach accounts for all possible transition paths, thermodynamic weights, and high energy barriers.
+
+
+3. KEY FEATURES
+
+- Physically Rigorous Approach: Distance between basins accounts for all possible transition paths and thermodynamic weights via spectral decomposition.
+- Automatic Noise Filtering: Separates physical relaxation modes from numerical noise by detecting a spectral gap.
+- Disconnected Graphs Handling: RNA structure graphs generated via stochastic sampling are often disconnected. The software analyzes all significant connected components separately and computes a weighted average of the ultrametricity scores.
+- Comprehensive Null Models: Includes Energy Shuffle, Topology Shuffle, Nucleotide Shuffle, and Random Basins models to assess statistical significance via two-sided p-values.
+- High Performance: Fully parallelized execution for both the main analysis and null models using Python multiprocessing.
+- Bitmask Optimization: Uses O(1) bitwise conflict checking and highly optimized Inter-Process Communication (IPC) for rapid neighbor generation.
+- Detailed Diagnostics: Provides verbose logging with precise time breakdowns for every computational stage.
+
+
+4. DEPENDENCIES AND INSTALLATION
+
+The code requires Python 3 and the following external packages:
+
+- ViennaRNA package (with Python bindings)
+- NumPy
+- SciPy
+- Biopython
+- threadpoolctl
+
+Installation Steps:
+
+Step 1: Install the ViennaRNA package.
+On Linux (Debian/Ubuntu): sudo apt-get install python3-viennarna
+Using Conda (Cross-platform): conda install -c bioconda viennarna
+
+Step 2: Install the Python dependencies using pip:
 pip install numpy scipy biopython threadpoolctl
 
-The ViennaRNA library is recommended to be installed via conda:
-conda install -c bioconda viennarna
+Note on Windows: The script includes specific thread-limiting routines (via threadpoolctl and environment variables) to prevent BLAS/OpenMP thread oversubscription, which is a common issue with multiprocessing on Windows.
 
-Note for Windows users: The software includes critical fixes for multiprocessing with the spawn start method, limiting BLAS/OpenMP threads inside workers to prevent resource contention and memory leaks.
 
-3. PARAMETER CONFIGURATION
+5. USAGE AND DATA INPUT
 
-All parameters are set in the "USER PARAMETERS" block at the beginning of the script file. Key parameters include:
+The program is executed directly from the command line:
+python rna_ultrametricity.py
 
-DATA SOURCE
------------
-FASTA_RNA (True/False)
-Data loading mode. True reads all .fasta files in the current directory, sorts them by length, and processes all sequences. False uses the sequence defined in the RNA_SEQUENCE variable. Default: True.
+The script supports two data input modes, controlled by the FASTA_RNA parameter at the top of the script:
 
-RNA_SEQUENCE (string)
-Primary RNA structure. Used only when FASTA_RNA = False. Valid characters: A, U, G, C (uppercase, T is automatically replaced by U). Default: "ACATCAATCCACCACTCTTTCTCTTTAAAAAGAGTAGACCCAGGAACCGAAATTCTTTACCAAATTAAAAAA".
+- FASTA MODE (FASTA_RNA = True): The script scans the current working directory for all files with the .fasta extension. It loads all sequences, filters out invalid characters, and processes them in ascending order of length.
+- SINGLE SEQUENCE MODE (FASTA_RNA = False): The script processes a single RNA sequence hardcoded in the RNA_SEQUENCE variable.
 
-TEMPERATURE AND ENERGY
-----------------------
-TEMPERATURE_CELSIUS (number)
-Calculation temperature in degrees Celsius. Affects Boltzmann weights and transition probabilities. Default: 37.0 (physiological temperature). Valid range: 0.0 – 100.0.
 
-ENERGY_WINDOW (number or "inf")
-Energy window relative to the minimum free energy (MFE) in kcal/mol. Structures with energy above MFE + ENERGY_WINDOW are discarded. "inf" disables the window. Default: 50.0.
+6. DETAILED PARAMETER GUIDE
 
-STRUCTURE GENERATION
---------------------
-MAX_STRUCTURES (integer)
-Maximum sample size of unique structures. Generation stops when this limit is reached. Default: 100000. Valid range: 100 – 20000 (higher values possible but increase computation time).
+All user-configurable parameters are located in the "USER PARAMETERS" section at the top of the script.
 
-MIN_HAIRPIN_LEN (integer)
-Minimum number of unpaired nucleotides in a hairpin loop. Standard value: 3 (steric constraint). Default: 3. Valid range: 0 – 10.
+6.1. Temperature and Energy Parameters
+- TEMPERATURE_CELSIUS: Temperature in Celsius for Boltzmann weights and transition rates (default 37.0).
+- ENERGY_WINDOW: Energy cutoff relative to the minimum free energy (MFE) in kcal/mol. Structures with energy greater than MFE + ENERGY_WINDOW are discarded. Set to "inf" to disable the cutoff.
 
-RANDOM_SEED (integer)
-Initial value for the random number generator. Ensures reproducibility. When NUM_STAT > 1, seeds vary as RANDOM_SEED, RANDOM_SEED+1, ..., RANDOM_SEED+NUM_STAT-1. Default: 43.
+6.2. Structure Generation Parameters
+- MAX_STRUCTURES: Maximum number of unique secondary structures to sample via stochastic backtrack (pbacktrack).
+- MIN_HAIRPIN_LEN: Minimum number of unpaired nucleotides in a hairpin loop (steric constraint, default 3).
+- RANDOM_SEED: Seed for the random number generator to ensure reproducibility.
 
-ATTRACTION BASINS
------------------
-MAX_MACROSTATES_ANALYSIS (integer)
-Maximum number of attraction basins participating in the final analysis per connected component. If more remain after filtering, basins with the highest partition functions Z are kept. Default: 500. Valid range: 3 – 500.
+6.3. Attraction Basins and Components
+- MAX_MACROSTATES_ANALYSIS: Maximum number of attraction basins kept for the final spectral analysis. If more remain after filtering, basins with the highest partition functions are retained.
+- MIN_MACROSTATE_SIZE: Minimum number of structures a basin must contain to be considered statistically significant.
+- ALPHA_COMPONENT_THRESHOLD: Relative threshold for classifying connected components as significant or noise. A component is significant if it contains at least max(3, ALPHA_COMPONENT_THRESHOLD x N) structures, where N is the total number of unique structures.
 
-MIN_MACROSTATE_SIZE (integer)
-Minimum attraction basin size (number of constituent structures). Basins smaller than this are considered statistically insignificant and are excluded. Default: 5. Valid range: 1 – 100.
+6.4. Spectral Analysis Parameters
+- NUM_EIGENMODES: Number of eigenmodes requested for spectral decomposition using the Lanczos method.
+- SPECTRAL_GAP_THRESHOLD: Threshold for detecting a spectral gap. If the ratio of consecutive sorted eigenvalues exceeds this value, smaller modes are discarded as numerical noise.
+- FREQUENCY_PREFACTOR: Prefactor in the Kramers formula. Affects the absolute scale of the matrix but cancels out in relative distance calculations.
+- EIGS_MAXITER: Maximum iterations for the ARPACK Lanczos algorithm.
+- EIGS_SIGMA: Shift-invert parameter for finding eigenvalues near zero.
 
-ALPHA_COMPONENT_THRESHOLD (float)
-Relative threshold for classifying connected components as significant or noise. A component is significant if it contains at least max(3, ALPHA_COMPONENT_THRESHOLD * N) structures, where N is the total number of unique structures. Noise components are excluded from f_inter calculation and the final spectral analysis. Default: 0.001. Valid range: 0.001 – 0.1.
+6.5. Ultrametricity Testing Parameters
+- ULTRAMETRIC_EPSILON: Relative precision for considering the two largest sides of a triangle as equal.
+- ULTRAMETRIC_DELTA: Minimum relative difference between the smaller and middle sides to classify a triangle as nontrivially ultrametric.
+- EPS_COMPARISON: Threshold for comparing real numbers to handle floating-point inaccuracies (e.g., identifying plateaus).
 
-SPECTRAL ANALYSIS
------------------
-NUM_EIGENMODES (integer)
-Number of eigenmodes requested for spectral decomposition. After automatic noise filtering, the actual number used may be smaller. Must be strictly less than the number of structures. Default: 50. Valid range: 5 – 200.
+6.6. Computational and Statistical Parameters
+- NUM_WORKERS: Number of parallel processes. Recommended to be less than the number of physical CPU cores.
+- VERBOSE: Toggles detailed logging, including time breakdowns for each computational stage.
+- NUM_STAT: Number of independent statistical runs per sequence. Results are averaged and reported as mean +/- standard deviation.
+- EXPECTATION_BY_RNA: If True, adds a summary line with the ensemble average across all processed sequences.
 
-SPECTRAL_GAP_THRESHOLD (float)
-Threshold for detecting the spectral gap between noise and physical modes. If the ratio |lambda_k| / |lambda_{k-1}| exceeds this value, modes with smaller indices are discarded as numerical noise. Default: 1e6. Valid range: 1e2 – 1e12.
 
-FREQUENCY_PREFACTOR (float)
-Frequency prefactor nu_0 in the Kramers formula. Affects absolute scale but not relative distances. Default: 1.0.
+7. NULL HYPOTHESIS TESTING FRAMEWORK
 
-EIGS_MAXITER (integer)
-Maximum number of iterations for the Lanczos algorithm (ARPACK). Increase for matrices with a dense spectrum near zero. Default: 50000. Valid range: 1000 – 200000.
+A central feature of this software is the ability to test whether the observed ultrametricity is a specific biological property or a generic feature of random heteropolymers. The NULL_MODEL_TYPE parameter selects the testing framework. All tests use a two-sided p-value to detect both unusually high and unusually low ultrametricity.
 
-EIGS_SIGMA (float)
-Shift sigma for the shift-invert Lanczos method. Optimal value (1e-4 to 1e-5) ensures diagonal dominance and fast LU factorization. Default: 1e-4. Valid range: 1e-6 – 1e-3.
+7.1. Energy Shuffle (energy_shuffle)
+Preserves the exact neighborhood graph (including all topological correlations) but randomly shuffles the free energies of the structures. Basins and the spectrum are recalculated. This tests whether the hierarchical organization is driven by specific thermodynamic funnels rather than just the graph topology.
 
-ULTRAMETRICITY CHECK
---------------------
-ULTRAMETRIC_EPSILON (float)
-Relative precision epsilon for approximate ultrametricity. Two largest triangle sides are considered equal if (d_max - d_mid) / d_mid <= epsilon. Must be strictly less than ULTRAMETRIC_DELTA. Default: 0.05. Valid range: 0.0 – 0.20.
+7.2. Topology Shuffle (topo_shuffle)
+Implements the Configuration Model. It rewires graph edges using double-edge swaps (strictly preserving the degree sequence of every vertex) and shuffles the energies. This destroys topological correlations while maintaining the mobility distribution, establishing a baseline chaos level for random graphs.
 
-ULTRAMETRIC_DELTA (float)
-Minimum relative difference delta for nontrivial ultrametric classification: (d_mid - d_min) / d_mid > delta. Must be strictly greater than ULTRAMETRIC_EPSILON. Default: 0.1. Valid range: 0.01 – 0.50.
+7.3. Nucleotide Shuffle (nt_shuffle)
+The strictest biological control. It randomly permutes the original RNA sequence while preserving its exact nucleotide composition. For each permutation, the entire pipeline is re-executed: structure generation, graph building, component analysis, and spectral decomposition. This tests if the specific evolutionary order of nucleotides is responsible for the landscape hierarchy.
 
-NUMERICAL PRECISION
--------------------
-EPS_COMPARISON (float)
-Threshold for comparing real numbers (energies, distances). Used for strict inequalities in plateau, local minima, and triangle classification. Default: 1e-9. Valid range: 1e-12 – 1e-6.
+7.4. Random Basins (random_basins)
+A geometric control test. It preserves the real spectrum of the transition matrix but randomly partitions the structures into basins of the exact same sizes. This checks whether the observed ultrametricity is merely an artifact of the high-dimensional eigenvector space geometry.
 
-COMPUTATIONAL RESOURCES
------------------------
-NUM_WORKERS (integer or None)
-Number of parallel processes for neighbor generation, NUM_STAT runs, and null models. On Windows, recommended to set below the number of physical cores (e.g., 12 for a 24-thread processor). None auto-detects all cores. Default: 12.
+7.5. Full Analysis (full_analysis)
+Automatically executes both the Energy Shuffle and Topology Shuffle tests and outputs separate summary tables for each.
 
-VERBOSE (True/False)
-Verbose output mode. True outputs all intermediate results and detailed timing breakdowns. False outputs only final results. Default: True.
 
-STATISTICAL ANALYSIS
---------------------
-NUM_STAT (integer)
-Number of independent runs for each RNA sequence. Runs are executed in parallel. Results are averaged and output as mean +/- std. Integer quantities are rounded. Default: 5. Valid range: 1 – 100.
+8. OUTPUT INTERPRETATION
 
-NULL HYPOTHESIS TESTING
------------------------
-NULL_MODEL_TYPE (string)
-Type of null model for statistical testing. All models use a two-sided p-value. Possible values:
-- none: No null hypothesis testing. The program operates in normal mode.
-- full_analysis: (RECOMMENDED) Full mechanism analysis. Automatically executes both energy_shuffle and topo_shuffle tests. Outputs two separate summary tables.
-- energy_shuffle: Preserves graph topology while shuffling energies. Assesses the contribution of pure graph topology to ultrametricity. Optimized via pre-computation of component data.
-- topo_shuffle: Configuration model. Edge rewiring (double_edge_swap preserving vertex degrees) combined with energy shuffling. Destroys topological correlations while preserving mobility distribution. Represents maximum chaos at a fixed degree sequence.
-- nt_shuffle: Complete nucleotide shuffling with full ensemble regeneration. The most stringent biological control. Tests whether ultrametricity is determined by specific nucleotide order. Requires significant computation time.
-- random_basins: Geometric control. Preserves real spectrum but randomly partitions structures into basins of identical sizes. Checks for artifacts of high-dimensional eigenvector space geometry.
-Default: 'energy_shuffle'.
+The script outputs detailed logs to the console and generates final summary tables. Key metrics include:
 
-NUM_NULL_SAMPLES (integer)
-Number of null model realizations. Executed in parallel via multiprocessing.Pool. For random_basins, 100-500 is feasible. For energy_shuffle and topo_shuffle, 20-30 is recommended. For nt_shuffle, 5-10 is recommended. In full_analysis mode, this number applies to both tests. Default: 100.
+- u_nt (Nontrivial Ultrametricity): The percentage of triplets satisfying the strong triangle inequality with distinct sides. This is the primary measure of hierarchical organization.
+- u_tr (Trivial Ultrametricity): The percentage of equilateral triangles (all three distances are equal).
+- u_non (Non-ultrametric): The percentage of triplets violating the ultrametric condition.
+- f_inter (Fragmentation Index): The fraction of triplets that belong to different disconnected components. A high f_inter indicates that the landscape is highly fragmented at the given energy window, meaning the global hierarchy is broken into isolated local hierarchies.
+- p-value: The two-sided statistical significance of the deviation from the null model ensemble. Values less than 0.05 indicate that the real RNA sequence exhibits a statistically anomalous degree of ultrametricity compared to the randomized models.
 
-NUM_EDGE_SWAPS_MULTIPLIER (integer)
-Multiplier for edge swaps in topo_shuffle and full_analysis modes. Number of swaps = NUM_EDGE_SWAPS_MULTIPLIER * |E|. Higher values ensure thorough destruction of topological correlations. Default: 10. Valid range: 1 – 100.
 
-ENSEMBLE AVERAGING
-------------------
-EXPECTATION_BY_RNA (True/False)
-Ensemble averaging mode. When True, a summary row "AVERAGE OVER ALL RNAs" containing mean values and standard deviations of all corresponding metrics is appended to the END OF EACH output table (main results table and all null model tables). This allows assessment of typical values and spread across the ensemble for both real data and each null model. Default: False.
+9. ALGORITHMIC OPTIMIZATIONS
 
-4. RUNNING THE SOFTWARE
+To handle the combinatorial explosion of RNA secondary structures, the software employs several advanced optimizations:
 
-Execute from the command line:
-python Vienna_RNA_new_ver_23.py
+- Bitmask IPC: Structures are encoded as bitmasks of allowed base pairs. Conflict checking (e.g., pseudoknots or overlapping pairs) is performed in O(1) time using bitwise AND operations.
+- Path Compression: Gradient descent for basin identification uses an iterative path-compression algorithm instead of recursion, preventing stack overflow on large plateaus.
+- Shift-Invert Spectral Decomposition: Uses the shift-invert mode of the ARPACK library to rapidly find the smallest non-zero eigenvalues of the sparse, negative semi-definite transition matrix.
+- Pre-allocated Component Data: For the Energy Shuffle null model, component topology is serialized and passed to worker processes only once, drastically reducing Inter-Process Communication overhead.
+- Thread Limiting: Explicitly limits BLAS/LAPACK/OpenMP threads inside multiprocessing workers to prevent CPU thrashing and memory leaks on both Windows and Linux.
 
-Or run from an interactive environment (Jupyter, Spyder, IDLE).
 
-Before starting calculations, the program outputs all configured parameters, warns about resource-intensive configurations (large NUM_NULL_SAMPLES with heavy test modes), lists the found FASTA files, and displays the loaded sequences sorted by length.
+10. CITATION
 
-If NUM_STAT > 1, all runs for each sequence are executed in parallel. The null hypothesis test (if enabled) is executed once per sequence using data from the first successful run.
+If you use this software or the underlying methodology in your research, please cite the accompanying paper:
 
-5. INTERPRETATION OF RESULTS
+A. P. Zubarev, "Kinetic metric for attraction basins of RNA secondary structures and analysis of the energy landscape ultrametricity", 2026.
 
-5.1. Main Results Table
 
-The main table contains weighted average values across all significant connected components. The weights are the number of basin triplets within each component, ensuring that larger components contribute proportionally more to the final metric.
+11. LICENSE
 
-Columns:
-- No.: Sequence number.
-- Description: Sequence identifier (from FASTA header).
-- Length: Sequence length in nucleotides.
-- Structures: Total number of unique structures in the sample (mean +/- std over NUM_STAT runs).
-- Basins: Total number of significant basins summed over ALL connected components. Note: MAX_MACROSTATES_ANALYSIS applies to each component individually, so the total may exceed this limit when multiple significant components are present.
-- f_inter: Fraction of inter-component triplets. An indicator of graph fragmentation. Ranges from 0 (all basins in one component) to values close to 1 (basins distributed across many isolated components). When f_inter > 0.8, u_nt characterizes only local hierarchy within individual components rather than the global landscape structure.
-- u_nt (%): Degree of nontrivial ultrametricity. Characterizes the presence of hierarchical organization where two larger distances are approximately equal and significantly larger than the smallest. Values range from 0 to 100 percent.
-- u_tr (%): Degree of trivial ultrametricity (equilateral triangles). Typically close to zero. High values would indicate a lack of differentiated hierarchy.
-- u_non (%): Degree of non-ultrametricity. Triangles not satisfying either ultrametricity condition.
-- Time (s): Execution time for the main stage.
-
-5.2. Null Model Tables
-
-When tests are enabled (NULL_MODEL_TYPE != 'none'), additional tables are displayed. For full_analysis mode, two separate tables are produced: Energy Shuffle and Topo Shuffle (Configuration Model).
-
-Each null model table includes:
-- Real u_nt from the main analysis.
-- Mean and std of u_nt, u_tr, u_non for the null model ensemble.
-- Two-sided p-value indicating whether the observed ultrametricity significantly deviates from the null model.
-- Test execution time.
-
-Interpretation of two-sided p-value:
-- p < 0.05: The observed ultrametricity significantly deviates from the random level (in either direction). The hierarchy (or its absence) is a statistically significant property of the given sequence.
-- p >= 0.05: Ultrametricity does not significantly differ from the random model.
-
-Model comparison logic:
-- If real differs significantly from nt_shuffle but not from energy_shuffle: Ultrametricity is a topological property of the conformational space, not a consequence of specific nucleotide order.
-- If real significantly exceeds energy_shuffle: The specific distribution of free energies (thermodynamic funnels) enhances ultrametricity beyond what topology alone provides.
-- If real is significantly lower than energy_shuffle: Physical organization frustrates the topologically inherent hierarchy.
-- If real is approximately equal to topo_shuffle: The observed ultrametricity is consistent with a random graph having the same degree distribution, suggesting it arises from generic constraints rather than specific organization.
-
-5.3. Ensemble Averaging (EXPECTATION_BY_RNA)
-
-When EXPECTATION_BY_RNA = True, an additional summary row is appended to every output table:
-- Main Results Table: Mean and std of u_nt, u_tr, u_non, f_inter, number of structures, basins, components, and execution time across all RNA sequences.
-- Energy Shuffle Table: Mean and std of Energy u_nt, Energy u_tr, Energy u_non across all sequences.
-- Topo Shuffle Table: Mean and std of Topo u_nt, Topo u_tr, Topo u_non across all sequences.
-- NT Shuffle Table: Mean and std of NT u_nt, NT u_tr, NT u_non across all sequences.
-
-This row provides a quick overview of the typical ultrametricity level and its variability across the studied ensemble, both for real landscapes and under each null hypothesis. It is particularly useful for identifying whether observed patterns are consistent across the dataset or dominated by individual outliers.
-
-6. COMPUTATIONAL PERFORMANCE
-
-The most resource-intensive stages are neighbor graph construction (Stage 5) and spectral decomposition (Stage 12). The software is optimized using bit masks for O(1) conflict checking and parallel computing via multiprocessing.
-
-Key optimizations:
-- Bitmask-based structure representation enables O(1) conflict checking during neighbor generation.
-- Parallel neighbor generation distributes work across multiple processes.
-- The energy_shuffle null model uses pre-computed component data to avoid repeated serialization of the full adjacency graph.
-- Shift-invert Lanczos method with sigma = EIGS_SIGMA ensures fast spectral decomposition even for random graphs.
-- maxtasksperchild=1 prevents memory leaks from C extensions (SuperLU, ARPACK) in long-lived processes.
-
-Approximate timing for an RNA of 70 nucleotides with a sample of ~22,000 structures: one main stage run takes 20-30 seconds on a modern multi-core processor (12 workers). The energy_shuffle test with 20 realizations takes several minutes. The nt_shuffle test requires complete recalculation for each realization and may take hours depending on NUM_NULL_SAMPLES.
-
-7. CITATION
-
-If you use this software in your research, please cite:
-Zubarev, A. P. (2026). Degree of nontrivial ultrametricity for RNA macrostates. Zenodo. https://doi.org/10.5281/zenodo.20818030
-
-8. CONTACTS
-
-Author: A. P. Zubarev
-Email: apzubarev@mail.ru
+Please refer to the LICENSE file in the repository for terms of use and distribution.
